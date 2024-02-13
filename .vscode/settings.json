@@ -1,0 +1,11 @@
+{
+    /*
+    "go.testFlags": [
+        "-v",
+        "-coverpkg=all"
+    ]
+    */
+    "go.toolsEnvVars": {
+        "GOEXPERIMENT": "rangefunc"
+    }
+}
