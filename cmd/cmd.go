@@ -41,7 +41,7 @@ type filterParams struct {
 func createRootCmd() *cobra.Command {
 	var params filterParams
 	filterCmd := &cobra.Command{
-		Use:   "logex",
+		Use:   "logex [flags] file-name",
 		Short: "logex is a tool for filtering and formatting structured log files",
 		Run: func(cmd *cobra.Command, args []string) {
 			params.fileName = args[0]
@@ -58,21 +58,21 @@ func createRootCmd() *cobra.Command {
 		"filter-kql",
 		"f",
 		"",
-		"filter in the Kibana Query Language format. Example: msg:*request*")
+		"filter in the Kibana Query Language format. Example: 'level:(error OR warn)'")
 
 	filterCmd.Flags().StringArrayVarP(
 		&params.include,
 		"include",
 		"i",
 		nil,
-		"include only records with substrings")
+		"include only records with specified substrings")
 
 	filterCmd.Flags().StringArrayVarP(
 		&params.exclude,
 		"exclude",
 		"e",
 		nil,
-		"exclude all records with substrings")
+		"exclude all records with specified substrings")
 
 	filterCmd.Flags().StringSliceVar(
 		&params.selectProps,
@@ -91,19 +91,19 @@ func createRootCmd() *cobra.Command {
 		"txt-format",
 		"t",
 		nil,
-		"property names to specify order for printing fields in plain text format")
+		"property names which will be printed first in plain text format")
 
 	filterCmd.Flags().BoolVar(
 		&params.textNoNewLine,
 		"txt-nonl",
 		false,
-		"do not add new lines after records")
+		"do not add new lines after each record")
 
 	filterCmd.Flags().BoolVar(
 		&params.textNoProp,
 		"txt-noprop",
 		false,
-		"do not print properties except these selected in format string")
+		"do not print properties except these selected in format string (txt-format)")
 
 	filterCmd.Flags().StringVar(
 		&params.textDelim,
@@ -128,14 +128,14 @@ func createRootCmd() *cobra.Command {
 		&params.first,
 		"first",
 		0,
-		"out only first N matched records",
+		"print only first N matched records",
 	)
 
 	filterCmd.Flags().IntVar(
 		&params.last,
 		"last",
 		0,
-		"out only last N matched records",
+		"print only last N matched records",
 	)
 
 	return filterCmd
