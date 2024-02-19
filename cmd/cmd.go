@@ -91,7 +91,7 @@ func createRootCmd() *cobra.Command {
 		"txt-format",
 		"t",
 		nil,
-		"property names which will be printed first in plain text format")
+		"property names which will be printed first in the plain text format")
 
 	filterCmd.Flags().BoolVar(
 		&params.textNoNewLine,
@@ -103,7 +103,7 @@ func createRootCmd() *cobra.Command {
 		&params.textNoProp,
 		"txt-noprop",
 		false,
-		"do not print properties except these selected in format string (txt-format)")
+		"do not print properties except these selected in the format string (txt-format)")
 
 	filterCmd.Flags().StringVar(
 		&params.textDelim,
@@ -115,7 +115,7 @@ func createRootCmd() *cobra.Command {
 		&params.distinctBy,
 		"distinct-by",
 		"",
-		"returns distinct records according to a specified property name")
+		"returns distinct records according to the specified property name")
 
 	filterCmd.Flags().StringSliceVarP(
 		&params.highlights,
