@@ -36,6 +36,7 @@ type filterParams struct {
 	highlights    []string
 	first         int
 	last          int
+	context       int
 }
 
 func createRootCmd() *cobra.Command {
@@ -138,6 +139,13 @@ func createRootCmd() *cobra.Command {
 		"print only last N matched records",
 	)
 
+	filterCmd.Flags().IntVar(
+		&params.context,
+		"context",
+		0,
+		"print N additional records before and after matched",
+	)
+
 	return filterCmd
 }
 
@@ -158,7 +166,10 @@ func doFilter(params *filterParams) error {
 }
 
 func runPipeline(params *filterParams, r io.Reader, w io.Writer) error {
-	filterByKQL, err := steps.FilterByKQL(params.kqlFilter)
+	opts := pipeline.PipelineOptions{
+		ContextEnabled: params.context > 0,
+	}
+	filterByKQL, err := steps.FilterByKQL(opts, params.kqlFilter)
 	if err != nil {
 		return err
 	}
@@ -169,26 +180,28 @@ func runPipeline(params *filterParams, r io.Reader, w io.Writer) error {
 
 	if len(params.textFormat) > 0 {
 		formatter = steps.JsonToText(
+			opts,
 			params.textFormat,
 			params.textNoNewLine,
 			params.textNoProp,
 			params.textDelim,
 			slices.Concat(params.include, params.highlights))
 	} else {
-		formatter = steps.JsonToStr()
+		formatter = steps.JsonToStr(opts)
 	}
 
 	return steps.WriteLines(
 		w,
 		params.showErrors,
 		formatter(
-			steps.Last(params.last)(
-				steps.First(params.first)(
-					steps.Select(params.selectProps)(
-						steps.DistinctBy(params.distinctBy)(
-							filterByKQL(
-								steps.StrToJson()(
-									steps.IncludeSubstrings(params.include)(
-										steps.ExcludeSubstrings(params.exclude)(
-											steps.RemovePrefix()(input)))))))))))
+			steps.Last(opts, params.last)(
+				steps.First(opts, params.first)(
+					steps.Context(opts, params.context, params.context)(
+						steps.Select(opts, params.selectProps)(
+							steps.DistinctBy(opts, params.distinctBy)(
+								filterByKQL(
+									steps.StrToJson(opts)(
+										steps.IncludeSubstrings(opts, params.include)(
+											steps.ExcludeSubstrings(opts, params.exclude)(
+												steps.RemovePrefix(opts)(input))))))))))))
 }

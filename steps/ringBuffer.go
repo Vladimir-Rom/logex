@@ -1,8 +1,9 @@
 package steps
 
 type ringBuffer[Item any] struct {
-	items []Item
-	head  int
+	items     []Item
+	head      int
+	overflown bool
 }
 
 func newRingBuffer[Item any](size int) *ringBuffer[Item] {
@@ -16,13 +17,16 @@ func (rb *ringBuffer[Item]) Add(item Item) {
 	rb.head++
 	if rb.head >= len(rb.items) {
 		rb.head = 0
+		rb.overflown = true
 	}
 }
 
 func (rb *ringBuffer[Item]) All(yield func(item Item) bool) {
-	for i := rb.head; i < len(rb.items); i++ {
-		if !yield(rb.items[i]) {
-			return
+	if rb.overflown {
+		for i := rb.head; i < len(rb.items); i++ {
+			if !yield(rb.items[i]) {
+				return
+			}
 		}
 	}
 

@@ -11,6 +11,7 @@ import (
 )
 
 func JsonToText(
+	opts pipeline.PipelineOptions,
 	props []string,
 	noNewLine,
 	noProp bool,
@@ -24,7 +25,7 @@ func JsonToText(
 	c := colors.NewColors()
 	highlighter := getHighlighter(highlights, c)
 
-	return pipeline.NewStep[JSON, string](func(obj pipeline.Item[JSON], yield pipeline.Yield[string]) bool {
+	return pipeline.NewStep[JSON, string](opts, func(obj pipeline.Item[JSON], yield pipeline.Yield[string]) bool {
 		res := strings.Builder{}
 		for i, p := range props {
 			delim := textDelim

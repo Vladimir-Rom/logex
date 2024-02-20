@@ -4,7 +4,7 @@ import (
 	"github.com/vladimir-rom/logex/pipeline"
 )
 
-func Last(count int) pipeline.Step[JSON, JSON] {
+func Last(opts pipeline.PipelineOptions, count int) pipeline.Step[JSON, JSON] {
 	if count <= 0 {
 		return Noop[JSON]()
 	}
@@ -16,6 +16,7 @@ func Last(count int) pipeline.Step[JSON, JSON] {
 	buffer := newRingBuffer[rec](count)
 
 	return pipeline.NewStepWithFin(
+		opts,
 		func(obj pipeline.Item[JSON], yield pipeline.Yield[JSON]) bool {
 			buffer.Add(rec{obj, nil})
 			return true
@@ -30,13 +31,13 @@ func Last(count int) pipeline.Step[JSON, JSON] {
 	)
 }
 
-func First(count int) pipeline.Step[JSON, JSON] {
+func First(opts pipeline.PipelineOptions, count int) pipeline.Step[JSON, JSON] {
 	if count <= 0 {
 		return Noop[JSON]()
 	}
 
 	returned := 0
-	return pipeline.NewStep[JSON, JSON](func(obj pipeline.Item[JSON], yield pipeline.Yield[JSON]) bool {
+	return pipeline.NewStep[JSON, JSON](opts, func(obj pipeline.Item[JSON], yield pipeline.Yield[JSON]) bool {
 		returned++
 		if returned > count {
 			return false

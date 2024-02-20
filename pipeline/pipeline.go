@@ -1,7 +1,11 @@
 package pipeline
 
+type PipelineOptions struct {
+	ContextEnabled bool
+}
+
 type Metadata struct {
-	removed bool
+	Removed bool
 }
 
 type Item[Value any] struct {
@@ -33,11 +37,12 @@ type Yield[T any] func(Item[T], error) bool
 type Seq[T any] func(Yield[T])
 type Step[In, Out any] func(Seq[In]) Seq[Out]
 
-func NewStep[In, Out any](sink func(item Item[In], yield Yield[Out]) bool) Step[In, Out] {
-	return NewStepWithFin(sink, func(internalYield Yield[Out]) {})
+func NewStep[In, Out any](opts PipelineOptions, sink func(item Item[In], yield Yield[Out]) bool) Step[In, Out] {
+	return NewStepWithFin(opts, sink, func(internalYield Yield[Out]) {})
 }
 
 func NewStepWithFin[In, Out any](
+	opts PipelineOptions,
 	sink func(item Item[In], yield Yield[Out]) bool,
 	finalize func(yield Yield[Out])) Step[In, Out] {
 	return func(in Seq[In]) Seq[Out] {
@@ -49,8 +54,10 @@ func NewStepWithFin[In, Out any](
 						return
 					}
 				} else {
-					if !sink(v, internalYield) {
-						return
+					if opts.ContextEnabled || !v.Metadata.Removed {
+						if !sink(v, internalYield) {
+							return
+						}
 					}
 				}
 			}
