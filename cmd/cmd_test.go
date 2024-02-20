@@ -79,6 +79,11 @@ func TestContext(t *testing.T) {
 		input,
 		[]steps.JSON{{"field": "value1"}, {"field": "value2"}, {"field": "value3"}, {"field": "value4"}, {"field": "value5"}})
 
+	testPipelineJson(t,
+		&filterParams{include: []string{"Value1111"}, context: 1},
+		input,
+		[]steps.JSON{})
+
 }
 
 func testPipelineJson(t *testing.T, params *filterParams, in []steps.JSON, expectedOut []steps.JSON) {
