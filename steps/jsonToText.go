@@ -62,7 +62,7 @@ func JsonToText(
 }
 
 func getHighlighter(subs []string, c *colors.Colors) func(string) string {
-	if !c.Enabled {
+	if !c.Enabled || len(subs) == 0 {
 		return func(s string) string {
 			return s
 		}
