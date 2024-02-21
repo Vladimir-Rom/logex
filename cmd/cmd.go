@@ -24,9 +24,9 @@ func Execute() {
 type filterParams struct {
 	fileName      string
 	kqlFilter     string
-	include       []string
+	includeAll    []string
 	includeAny    []string
-	exclude       []string
+	excludeAny    []string
 	excludeAll    []string
 	selectProps   []string
 	durationMs    []string
@@ -64,22 +64,22 @@ func createRootCmd() *cobra.Command {
 		"",
 		"filter in the Kibana Query Language format. Example: 'level:(error OR warn)'")
 
-	filterCmd.Flags().StringSliceVarP(
-		&params.include,
-		"include",
-		"i",
+	filterCmd.Flags().StringSliceVar(
+		&params.includeAll,
+		"include-all",
 		nil,
 		"include only records with all specified substrings")
 
-	filterCmd.Flags().StringSliceVar(
+	filterCmd.Flags().StringSliceVarP(
 		&params.includeAny,
 		"include-any",
+		"i",
 		nil,
 		"include only records with any of specified substrings")
 
 	filterCmd.Flags().StringSliceVarP(
-		&params.exclude,
-		"exclude",
+		&params.excludeAny,
+		"exclude-any",
 		"e",
 		nil,
 		"exclude records with any of specified substrings")
@@ -206,7 +206,7 @@ func runPipeline(params *filterParams, r io.Reader, w io.Writer) error {
 			params.textNoNewLine,
 			params.textNoProp,
 			params.textDelim,
-			slices.Concat(params.include, params.includeAny, params.highlights))
+			slices.Concat(params.includeAll, params.includeAny, params.highlights))
 	} else {
 		formatter = steps.JsonToStr(opts)
 	}
@@ -223,8 +223,8 @@ func runPipeline(params *filterParams, r io.Reader, w io.Writer) error {
 								filterByKQL(
 									steps.StrToJson(opts, params.durationMs)(
 										steps.IncludeSubstringsAny(opts, params.includeAny)(
-											steps.IncludeSubstrings(opts, params.include)(
+											steps.IncludeSubstringsAll(opts, params.includeAll)(
 												steps.ExcludeSubstringsAll(opts, params.excludeAll)(
-													steps.ExcludeSubstrings(opts, params.exclude)(
+													steps.ExcludeSubstringsAny(opts, params.excludeAny)(
 														steps.RemovePrefix(opts)(input))))))))))))))
 }

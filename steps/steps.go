@@ -32,7 +32,7 @@ func RemovePrefix(opts pipeline.PipelineOptions) pipeline.Step[string, string] {
 	})
 }
 
-func ExcludeSubstrings(opts pipeline.PipelineOptions, substrings []string) pipeline.Step[string, string] {
+func ExcludeSubstringsAny(opts pipeline.PipelineOptions, substrings []string) pipeline.Step[string, string] {
 	if len(substrings) == 0 {
 		return Noop[string]()
 	}
@@ -72,7 +72,7 @@ func ExcludeSubstringsAll(opts pipeline.PipelineOptions, substrings []string) pi
 	})
 }
 
-func IncludeSubstrings(opts pipeline.PipelineOptions, substrings []string) pipeline.Step[string, string] {
+func IncludeSubstringsAll(opts pipeline.PipelineOptions, substrings []string) pipeline.Step[string, string] {
 	if len(substrings) == 0 {
 		return Noop[string]()
 	}
