@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charlievieth/strcase"
 	"github.com/vladimir-rom/gokql"
@@ -51,6 +52,26 @@ func ExcludeSubstrings(opts pipeline.PipelineOptions, substrings []string) pipel
 	})
 }
 
+func ExcludeSubstringsAll(opts pipeline.PipelineOptions, substrings []string) pipeline.Step[string, string] {
+	if len(substrings) == 0 {
+		return Noop[string]()
+	}
+
+	return pipeline.NewStep[string, string](opts, func(line pipeline.Item[string], yield pipeline.Yield[string]) bool {
+		if line.Metadata.Removed {
+			return yield(line, nil)
+		}
+
+		for _, s := range substrings {
+			if !strcase.Contains(line.Value, s) {
+				return yield(line, nil)
+			}
+		}
+		line.Metadata.Removed = true
+		return yield(line, nil)
+	})
+}
+
 func IncludeSubstrings(opts pipeline.PipelineOptions, substrings []string) pipeline.Step[string, string] {
 	if len(substrings) == 0 {
 		return Noop[string]()
@@ -71,13 +92,44 @@ func IncludeSubstrings(opts pipeline.PipelineOptions, substrings []string) pipel
 	})
 }
 
-func StrToJson(opts pipeline.PipelineOptions) pipeline.Step[string, JSON] {
+func IncludeSubstringsAny(opts pipeline.PipelineOptions, substrings []string) pipeline.Step[string, string] {
+	if len(substrings) == 0 {
+		return Noop[string]()
+	}
+
+	return pipeline.NewStep[string, string](opts, func(line pipeline.Item[string], yield pipeline.Yield[string]) bool {
+		if line.Metadata.Removed {
+			return yield(line, nil)
+		}
+
+		for _, s := range substrings {
+			if strcase.Contains(line.Value, s) {
+				return yield(line, nil)
+			}
+
+		}
+		line.Metadata.Removed = true
+		return yield(line, nil)
+	})
+}
+
+func StrToJson(opts pipeline.PipelineOptions, durationMs []string) pipeline.Step[string, JSON] {
 	return pipeline.NewStep[string, JSON](opts, func(line pipeline.Item[string], yield pipeline.Yield[JSON]) bool {
 		var res JSON
 		err := json.Unmarshal([]byte(line.Value), &res)
 		if err != nil {
 			res = make(JSON)
 			res["raw"] = line
+		}
+
+		for _, durationField := range durationMs {
+			if dstr, ok := res[durationField]; ok {
+				d, err := time.ParseDuration(fmt.Sprintf("%v", dstr))
+				if err != nil {
+					continue
+				}
+				res[durationField] = d.Milliseconds()
+			}
 		}
 
 		return yield(pipeline.ToItem[string, JSON](line, res), nil)

@@ -25,8 +25,11 @@ type filterParams struct {
 	fileName      string
 	kqlFilter     string
 	include       []string
+	includeAny    []string
 	exclude       []string
+	excludeAll    []string
 	selectProps   []string
+	durationMs    []string
 	showErrors    bool
 	textFormat    []string
 	textNoNewLine bool
@@ -61,19 +64,37 @@ func createRootCmd() *cobra.Command {
 		"",
 		"filter in the Kibana Query Language format. Example: 'level:(error OR warn)'")
 
-	filterCmd.Flags().StringArrayVarP(
+	filterCmd.Flags().StringSliceVarP(
 		&params.include,
 		"include",
 		"i",
 		nil,
-		"include only records with specified substrings")
+		"include only records with all specified substrings")
 
-	filterCmd.Flags().StringArrayVarP(
+	filterCmd.Flags().StringSliceVar(
+		&params.includeAny,
+		"include-any",
+		nil,
+		"include only records with any of specified substrings")
+
+	filterCmd.Flags().StringSliceVarP(
 		&params.exclude,
 		"exclude",
 		"e",
 		nil,
-		"exclude all records with specified substrings")
+		"exclude records with any of specified substrings")
+
+	filterCmd.Flags().StringSliceVar(
+		&params.excludeAll,
+		"exclude-all",
+		nil,
+		"exclude records with all specified substrings")
+
+	filterCmd.Flags().StringSliceVar(
+		&params.durationMs,
+		"duration-ms",
+		nil,
+		"treat specified fields as duration string and convert it to milliseconds")
 
 	filterCmd.Flags().StringSliceVar(
 		&params.selectProps,
@@ -185,7 +206,7 @@ func runPipeline(params *filterParams, r io.Reader, w io.Writer) error {
 			params.textNoNewLine,
 			params.textNoProp,
 			params.textDelim,
-			slices.Concat(params.include, params.highlights))
+			slices.Concat(params.include, params.includeAny, params.highlights))
 	} else {
 		formatter = steps.JsonToStr(opts)
 	}
@@ -200,8 +221,10 @@ func runPipeline(params *filterParams, r io.Reader, w io.Writer) error {
 						steps.Select(opts, params.selectProps)(
 							steps.DistinctBy(opts, params.distinctBy)(
 								filterByKQL(
-									steps.StrToJson(opts)(
-										steps.IncludeSubstrings(opts, params.include)(
-											steps.ExcludeSubstrings(opts, params.exclude)(
-												steps.RemovePrefix(opts)(input))))))))))))
+									steps.StrToJson(opts, params.durationMs)(
+										steps.IncludeSubstringsAny(opts, params.includeAny)(
+											steps.IncludeSubstrings(opts, params.include)(
+												steps.ExcludeSubstringsAll(opts, params.excludeAll)(
+													steps.ExcludeSubstrings(opts, params.exclude)(
+														steps.RemovePrefix(opts)(input))))))))))))))
 }
