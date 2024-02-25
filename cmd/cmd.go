@@ -197,10 +197,10 @@ func runPipeline(params *filterParams, r io.Reader, w io.Writer) error {
 
 	input := steps.ReadByLines(r)
 
-	var formatter pipeline.Step[steps.JSON, string]
+	var formatJSONToText pipeline.Step[steps.JSON, string]
 
 	if len(params.textFormat) > 0 {
-		formatter = steps.JsonToText(
+		formatJSONToText = steps.JsonToText(
 			opts,
 			params.textFormat,
 			params.textNoNewLine,
@@ -208,23 +208,31 @@ func runPipeline(params *filterParams, r io.Reader, w io.Writer) error {
 			params.textDelim,
 			slices.Concat(params.includeAll, params.includeAny, params.highlights))
 	} else {
-		formatter = steps.JsonToStr(opts)
+		formatJSONToText = steps.JsonToStr(opts)
 	}
+
+	processStringInput := pipeline.Combine(
+		steps.RemovePrefix(opts),
+		steps.ExcludeSubstringsAny(opts, params.excludeAny),
+		steps.ExcludeSubstringsAll(opts, params.excludeAll),
+		steps.IncludeSubstringsAny(opts, params.includeAny),
+		steps.IncludeSubstringsAll(opts, params.includeAll),
+	)
+
+	processJSON := pipeline.Combine(
+		filterByKQL,
+		steps.DistinctBy(opts, params.distinctBy),
+		steps.Select(opts, params.selectProps),
+		steps.Context(opts, params.context, params.context),
+		steps.First(opts, params.first),
+		steps.Last(opts, params.last),
+	)
 
 	return steps.WriteLines(
 		w,
 		params.showErrors,
-		formatter(
-			steps.Last(opts, params.last)(
-				steps.First(opts, params.first)(
-					steps.Context(opts, params.context, params.context)(
-						steps.Select(opts, params.selectProps)(
-							steps.DistinctBy(opts, params.distinctBy)(
-								filterByKQL(
-									steps.StrToJson(opts, params.durationMs)(
-										steps.IncludeSubstringsAny(opts, params.includeAny)(
-											steps.IncludeSubstringsAll(opts, params.includeAll)(
-												steps.ExcludeSubstringsAll(opts, params.excludeAll)(
-													steps.ExcludeSubstringsAny(opts, params.excludeAny)(
-														steps.RemovePrefix(opts)(input))))))))))))))
+		formatJSONToText(
+			processJSON(
+				steps.StrToJson(opts, params.durationMs)(
+					processStringInput(input)))))
 }

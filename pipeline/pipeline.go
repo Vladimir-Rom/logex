@@ -1,5 +1,7 @@
 package pipeline
 
+import "fmt"
+
 type PipelineOptions struct {
 	ContextEnabled bool
 }
@@ -64,4 +66,21 @@ func NewStepWithFin[In, Out any](
 			finalize(internalYield)
 		}
 	}
+}
+
+func Combine[Item any](steps ...Step[Item, Item]) Step[Item, Item] {
+	if len(steps) < 2 {
+		panic(fmt.Sprintf("cannt combine %d steps", len(steps)))
+	}
+	result := func(in Seq[Item]) Seq[Item] {
+		return steps[1](steps[0](in))
+	}
+
+	for i := 2; i < len(steps); i++ {
+		r := result
+		result = func(in Seq[Item]) Seq[Item] {
+			return steps[i](r(in))
+		}
+	}
+	return result
 }
