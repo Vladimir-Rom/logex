@@ -220,12 +220,22 @@ func OpenFile(fileName string) (close func() error, reader io.Reader, err error)
 	return raw.Close, transform.NewReader(raw, unicode.BOMOverride(unicode.UTF8.NewDecoder())), nil
 }
 
-func ReadByLines(r io.Reader) pipeline.Seq[string] {
+func ReadByLines(fileName string, r io.Reader) pipeline.Seq[string] {
 	scanner := bufio.NewScanner(r)
 	scanner.Split(bufio.ScanLines)
+	recNum := 0
 	return func(yield pipeline.Yield[string]) {
 		for scanner.Scan() {
-			if !yield(pipeline.NewItem1(scanner.Text()), scanner.Err()) {
+			item := pipeline.Item[string]{
+				Value: scanner.Text(),
+				Metadata: pipeline.Metadata{
+					RecNum:   recNum,
+					FileName: fileName,
+				},
+			}
+			recNum++
+
+			if !yield(item, scanner.Err()) {
 				return
 			}
 		}

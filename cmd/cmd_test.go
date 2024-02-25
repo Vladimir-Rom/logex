@@ -86,6 +86,23 @@ func TestContext(t *testing.T) {
 
 }
 
+func TestMetadata(t *testing.T) {
+	testPipelineJson(t,
+		&filterParams{metadata: "rnum"},
+		[]steps.JSON{{"field": "value1"}, {"field": "value2"}},
+		[]steps.JSON{{"field": "value1", "rnum": 0.0}, {"field": "value2", "rnum": 1.0}})
+
+	testPipelineJson(t,
+		&filterParams{metadata: "rnum:r file:f"},
+		[]steps.JSON{{"field": "value1"}},
+		[]steps.JSON{{"field": "value1", "r": 0.0, "f": "test"}})
+
+	testPipelineJson(t,
+		&filterParams{metadata: "rnum", kqlFilter: "rnum > 0"},
+		[]steps.JSON{{"field": "value1"}, {"field": "value2"}},
+		[]steps.JSON{{"field": "value2", "rnum": 1.0}})
+}
+
 func testPipelineJson(t *testing.T, params *filterParams, in []steps.JSON, expectedOut []steps.JSON) {
 	t.Helper()
 	inBuffer := bytes.Buffer{}
@@ -98,7 +115,7 @@ func testPipelineJson(t *testing.T, params *filterParams, in []steps.JSON, expec
 
 	outBuffer := bytes.Buffer{}
 
-	err := runPipeline(params, &inBuffer, &outBuffer)
+	err := runPipeline(params, "test", &inBuffer, &outBuffer)
 	assert.NoError(t, err)
 
 	out := make([]steps.JSON, 0, len(in))

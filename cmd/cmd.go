@@ -40,6 +40,7 @@ type filterParams struct {
 	first         int
 	last          int
 	context       int
+	metadata      string
 }
 
 func createRootCmd() *cobra.Command {
@@ -167,14 +168,27 @@ func createRootCmd() *cobra.Command {
 		"print N additional records before and after matched",
 	)
 
+	filterCmd.Flags().StringVarP(
+		&params.metadata,
+		"metadata",
+		"m",
+		"rnum",
+		"add metadata fields. Format: name[:property-name]. Examples: "+
+			"'rnum' - adds rnum field with record number; "+
+			"'rnum:r1 file:f1' - adds field r1 record number and f1 with name of logfile. ",
+	)
+
 	return filterCmd
 }
 
 func doFilter(params *filterParams) error {
 	var reader io.Reader
+	var fileName string
 	if params.fileName == "-" {
 		reader = os.Stdin
+		fileName = "stdin"
 	} else {
+		fileName = params.fileName
 		close, r, err := steps.OpenFile(params.fileName)
 		if err != nil {
 			return err
@@ -183,10 +197,10 @@ func doFilter(params *filterParams) error {
 		defer close()
 	}
 
-	return runPipeline(params, reader, os.Stdout)
+	return runPipeline(params, fileName, reader, os.Stdout)
 }
 
-func runPipeline(params *filterParams, r io.Reader, w io.Writer) error {
+func runPipeline(params *filterParams, filename string, r io.Reader, w io.Writer) error {
 	opts := pipeline.PipelineOptions{
 		ContextEnabled: params.context > 0,
 	}
@@ -195,7 +209,12 @@ func runPipeline(params *filterParams, r io.Reader, w io.Writer) error {
 		return err
 	}
 
-	input := steps.ReadByLines(r)
+	addMeta, err := steps.AddMeta(opts, params.metadata)
+	if err != nil {
+		return err
+	}
+
+	input := steps.ReadByLines(filename, r)
 
 	var formatJSONToText pipeline.Step[steps.JSON, string]
 
@@ -220,6 +239,7 @@ func runPipeline(params *filterParams, r io.Reader, w io.Writer) error {
 	)
 
 	processJSON := pipeline.Combine(
+		addMeta,
 		filterByKQL,
 		steps.DistinctBy(opts, params.distinctBy),
 		steps.Select(opts, params.selectProps),

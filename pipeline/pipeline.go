@@ -7,7 +7,9 @@ type PipelineOptions struct {
 }
 
 type Metadata struct {
-	Removed bool
+	Removed  bool
+	RecNum   int
+	FileName string
 }
 
 type Item[Value any] struct {
@@ -26,12 +28,6 @@ func ToItem[Value1, Value2 any](item Item[Value1], value Value2) Item[Value2] {
 	return Item[Value2]{
 		Value:    value,
 		Metadata: item.Metadata,
-	}
-}
-
-func NewItem1[Value any](value Value) Item[Value] {
-	return Item[Value]{
-		Value: value,
 	}
 }
 
