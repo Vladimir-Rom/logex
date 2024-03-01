@@ -24,10 +24,10 @@ func Execute() {
 type filterParams struct {
 	fileName      string
 	kqlFilter     string
-	includeAll    []string
-	includeAny    []string
-	excludeAny    []string
-	excludeAll    []string
+	include       []string
+	exclude       []string
+	includeRegexp []string
+	excludeRegexp []string
 	selectProps   []string
 	durationMs    []string
 	showErrors    bool
@@ -65,31 +65,31 @@ func createRootCmd() *cobra.Command {
 		"",
 		"filter in the Kibana Query Language format. Example: 'level:(error OR warn)'")
 
-	filterCmd.Flags().StringSliceVar(
-		&params.includeAll,
-		"include-all",
-		nil,
-		"include only records with all specified substrings")
-
 	filterCmd.Flags().StringSliceVarP(
-		&params.includeAny,
-		"include-any",
+		&params.include,
+		"include",
 		"i",
 		nil,
 		"include only records with any of specified substrings")
 
 	filterCmd.Flags().StringSliceVarP(
-		&params.excludeAny,
-		"exclude-any",
+		&params.exclude,
+		"exclude",
 		"e",
 		nil,
 		"exclude records with any of specified substrings")
 
 	filterCmd.Flags().StringSliceVar(
-		&params.excludeAll,
-		"exclude-all",
+		&params.includeRegexp,
+		"include-regexp",
 		nil,
-		"exclude records with all specified substrings")
+		"include only records which matched with any of specified regular expressions")
+
+	filterCmd.Flags().StringSliceVar(
+		&params.excludeRegexp,
+		"exclude-regexp",
+		nil,
+		"exclude records which matched with any of specified regular expressions")
 
 	filterCmd.Flags().StringSliceVar(
 		&params.durationMs,
@@ -225,17 +225,26 @@ func runPipeline(params *filterParams, filename string, r io.Reader, w io.Writer
 			params.textNoNewLine,
 			params.textNoProp,
 			params.textDelim,
-			slices.Concat(params.includeAll, params.includeAny, params.highlights))
+			slices.Concat(params.include, params.highlights))
 	} else {
 		formatJSONToText = steps.JsonToStr(opts)
 	}
 
+	includeRegexp, err := steps.IncludeRegexp(opts, params.includeRegexp)
+	if err != nil {
+		return err
+	}
+	excludeRegexp, err := steps.ExcludeRegexp(opts, params.excludeRegexp)
+	if err != nil {
+		return err
+	}
+
 	processStringInput := pipeline.Combine(
 		steps.RemovePrefix(opts),
-		steps.ExcludeSubstringsAny(opts, params.excludeAny),
-		steps.ExcludeSubstringsAll(opts, params.excludeAll),
-		steps.IncludeSubstringsAny(opts, params.includeAny),
-		steps.IncludeSubstringsAll(opts, params.includeAll),
+		steps.ExcludeSubstringsAny(opts, params.exclude),
+		steps.IncludeSubstringsAny(opts, params.include),
+		includeRegexp,
+		excludeRegexp,
 	)
 
 	processJSON := pipeline.Combine(

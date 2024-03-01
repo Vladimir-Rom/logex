@@ -48,9 +48,23 @@ func TestKQL(t *testing.T) {
 
 func TestInclude(t *testing.T) {
 	testPipelineJson(t,
-		&filterParams{includeAll: []string{"Value2"}},
+		&filterParams{include: []string{"Value2"}},
 		[]steps.JSON{{"field": "value1"}, {"field": "value2"}, {"field": "value3"}},
 		[]steps.JSON{{"field": "value2"}})
+}
+
+func TestIncludeRegexp(t *testing.T) {
+	testPipelineJson(t,
+		&filterParams{includeRegexp: []string{"value[1-2]"}},
+		[]steps.JSON{{"field": "value1"}, {"field": "value2"}, {"field": "value3"}},
+		[]steps.JSON{{"field": "value1"}, {"field": "value2"}})
+}
+
+func TestExcludeRegexp(t *testing.T) {
+	testPipelineJson(t,
+		&filterParams{excludeRegexp: []string{"value[1-2]"}},
+		[]steps.JSON{{"field": "value1"}, {"field": "value2"}, {"field": "value3"}},
+		[]steps.JSON{{"field": "value3"}})
 }
 
 func TestContext(t *testing.T) {
@@ -60,27 +74,27 @@ func TestContext(t *testing.T) {
 	}
 
 	testPipelineJson(t,
-		&filterParams{includeAll: []string{"Value3"}, context: 1},
+		&filterParams{include: []string{"Value3"}, context: 1},
 		input,
 		[]steps.JSON{{"field": "value2"}, {"field": "value3"}, {"field": "value4"}})
 
 	testPipelineJson(t,
-		&filterParams{includeAll: []string{"Value1"}, context: 1},
+		&filterParams{include: []string{"Value1"}, context: 1},
 		input,
 		[]steps.JSON{{"field": "value1"}, {"field": "value2"}})
 
 	testPipelineJson(t,
-		&filterParams{includeAll: []string{"Value5"}, context: 1},
+		&filterParams{include: []string{"Value5"}, context: 1},
 		input,
 		[]steps.JSON{{"field": "value4"}, {"field": "value5"}})
 
 	testPipelineJson(t,
-		&filterParams{includeAll: []string{"Value3"}, context: 5},
+		&filterParams{include: []string{"Value3"}, context: 5},
 		input,
 		[]steps.JSON{{"field": "value1"}, {"field": "value2"}, {"field": "value3"}, {"field": "value4"}, {"field": "value5"}})
 
 	testPipelineJson(t,
-		&filterParams{includeAll: []string{"Value1111"}, context: 1},
+		&filterParams{include: []string{"Value1111"}, context: 1},
 		input,
 		[]steps.JSON{})
 
@@ -127,5 +141,6 @@ func testPipelineJson(t *testing.T, params *filterParams, in []steps.JSON, expec
 		}
 		out = append(out, j)
 	}
+
 	assert.Equal(t, expectedOut, out)
 }

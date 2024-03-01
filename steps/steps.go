@@ -52,46 +52,6 @@ func ExcludeSubstringsAny(opts pipeline.PipelineOptions, substrings []string) pi
 	})
 }
 
-func ExcludeSubstringsAll(opts pipeline.PipelineOptions, substrings []string) pipeline.Step[string, string] {
-	if len(substrings) == 0 {
-		return Noop[string]()
-	}
-
-	return pipeline.NewStep[string, string](opts, func(line pipeline.Item[string], yield pipeline.Yield[string]) bool {
-		if line.Metadata.Removed {
-			return yield(line, nil)
-		}
-
-		for _, s := range substrings {
-			if !strcase.Contains(line.Value, s) {
-				return yield(line, nil)
-			}
-		}
-		line.Metadata.Removed = true
-		return yield(line, nil)
-	})
-}
-
-func IncludeSubstringsAll(opts pipeline.PipelineOptions, substrings []string) pipeline.Step[string, string] {
-	if len(substrings) == 0 {
-		return Noop[string]()
-	}
-
-	return pipeline.NewStep[string, string](opts, func(line pipeline.Item[string], yield pipeline.Yield[string]) bool {
-		if line.Metadata.Removed {
-			return yield(line, nil)
-		}
-
-		for _, s := range substrings {
-			if !strcase.Contains(line.Value, s) {
-				line.Metadata.Removed = true
-				break
-			}
-		}
-		return yield(line, nil)
-	})
-}
-
 func IncludeSubstringsAny(opts pipeline.PipelineOptions, substrings []string) pipeline.Step[string, string] {
 	if len(substrings) == 0 {
 		return Noop[string]()
