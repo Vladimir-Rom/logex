@@ -173,8 +173,8 @@ func createRootCmd() *cobra.Command {
 		"metadata",
 		"m",
 		"rnum",
-		"add metadata fields. Format: name[:property-name]. Examples: "+
-			"'rnum' - adds rnum field with record number; "+
+		"add metadata fields. Format: name[:property-name]. \nExamples:\n"+
+			"'rnum' - adds rnum field with record number\n"+
 			"'rnum:r1 file:f1' - adds field r1 record number and f1 with name of logfile. ",
 	)
 
