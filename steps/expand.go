@@ -19,7 +19,7 @@ func Expand(opts pipeline.PipelineOptions, properties []string) pipeline.Step[JS
 		for _, property := range properties {
 			if value, ok := obj.Value[property]; ok {
 				if valueStr, ok := value.(string); ok {
-					var expanded map[string]any
+					var expanded any
 					if json.Unmarshal([]byte(valueStr), &expanded) == nil {
 						obj.Value[property] = expanded
 					}

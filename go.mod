@@ -9,7 +9,7 @@ require (
 	github.com/samber/lo v1.39.0
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
-	github.com/vladimir-rom/gokql v0.0.0-20240302220938-a1e219101c72
+	github.com/vladimir-rom/gokql v0.0.0-20240302225012-175cd1e9b706
 	golang.org/x/text v0.14.0
 )
 
