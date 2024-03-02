@@ -23,7 +23,7 @@ func Noop[V any]() pipeline.Step[V, V] {
 }
 
 func RemovePrefix(opts pipeline.PipelineOptions) pipeline.Step[string, string] {
-	return pipeline.NewStep[string, string](opts, func(line pipeline.Item[string], yield pipeline.Yield[string]) bool {
+	return pipeline.NewStep(opts, func(line pipeline.Item[string], yield pipeline.Yield[string]) bool {
 		if ind := strings.Index(line.Value, "{"); ind > 0 {
 			return yield(line.WithValue(line.Value[ind:]), nil)
 		} else {
@@ -37,7 +37,7 @@ func ExcludeSubstringsAny(opts pipeline.PipelineOptions, substrings []string) pi
 		return Noop[string]()
 	}
 
-	return pipeline.NewStep[string, string](opts, func(line pipeline.Item[string], yield pipeline.Yield[string]) bool {
+	return pipeline.NewStep(opts, func(line pipeline.Item[string], yield pipeline.Yield[string]) bool {
 		if line.Metadata.Removed {
 			return yield(line, nil)
 		}
@@ -57,7 +57,7 @@ func IncludeSubstringsAny(opts pipeline.PipelineOptions, substrings []string) pi
 		return Noop[string]()
 	}
 
-	return pipeline.NewStep[string, string](opts, func(line pipeline.Item[string], yield pipeline.Yield[string]) bool {
+	return pipeline.NewStep(opts, func(line pipeline.Item[string], yield pipeline.Yield[string]) bool {
 		if line.Metadata.Removed {
 			return yield(line, nil)
 		}
@@ -74,7 +74,7 @@ func IncludeSubstringsAny(opts pipeline.PipelineOptions, substrings []string) pi
 }
 
 func StrToJson(opts pipeline.PipelineOptions, durationMs []string) pipeline.Step[string, JSON] {
-	return pipeline.NewStep[string, JSON](opts, func(line pipeline.Item[string], yield pipeline.Yield[JSON]) bool {
+	return pipeline.NewStep(opts, func(line pipeline.Item[string], yield pipeline.Yield[JSON]) bool {
 		var res JSON
 		err := json.Unmarshal([]byte(line.Value), &res)
 		if err != nil {
@@ -92,14 +92,14 @@ func StrToJson(opts pipeline.PipelineOptions, durationMs []string) pipeline.Step
 			}
 		}
 
-		return yield(pipeline.ToItem[string, JSON](line, res), nil)
+		return yield(pipeline.ToItem(line, res), nil)
 	})
 }
 
 func JsonToStr(opts pipeline.PipelineOptions) pipeline.Step[JSON, string] {
-	return pipeline.NewStep[JSON, string](opts, func(obj pipeline.Item[JSON], yield pipeline.Yield[string]) bool {
+	return pipeline.NewStep(opts, func(obj pipeline.Item[JSON], yield pipeline.Yield[string]) bool {
 		b, err := json.Marshal(obj.Value)
-		return yield(pipeline.ToItem[JSON, string](obj, string(b)), err)
+		return yield(pipeline.ToItem(obj, string(b)), err)
 	})
 }
 
@@ -108,7 +108,7 @@ func Select(opts pipeline.PipelineOptions, properties []string) pipeline.Step[JS
 		return Noop[JSON]()
 	}
 
-	return pipeline.NewStep[JSON, JSON](opts, func(obj pipeline.Item[JSON], yield pipeline.Yield[JSON]) bool {
+	return pipeline.NewStep(opts, func(obj pipeline.Item[JSON], yield pipeline.Yield[JSON]) bool {
 		result := make(JSON)
 		for _, property := range properties {
 			if value, ok := obj.Value[property]; ok {
@@ -130,12 +130,17 @@ func FilterByKQL(opts pipeline.PipelineOptions, filter string) (pipeline.Step[JS
 		return nil, fmt.Errorf("filter parsing error: %w", err)
 	}
 
-	return pipeline.NewStep[JSON, JSON](opts, func(obj pipeline.Item[JSON], yield pipeline.Yield[JSON]) bool {
+	return pipeline.NewStep(opts, func(obj pipeline.Item[JSON], yield pipeline.Yield[JSON]) bool {
 		if obj.Metadata.Removed {
 			return yield(obj, nil)
 		}
 
-		matched, err := expression.Match(gokql.MapEvaluator{Map: obj.Value})
+		ev, err := gokql.NewMapEvaluator(map[string]any(obj.Value))
+		if err != nil {
+			return yield(obj.WithValue(nil), err)
+		}
+
+		matched, err := expression.Match(ev)
 		if err != nil {
 			return yield(obj.WithValue(nil), err)
 		}
@@ -151,7 +156,7 @@ func DistinctBy(opts pipeline.PipelineOptions, property string) pipeline.Step[JS
 
 	processed := make(map[string]struct{})
 
-	return pipeline.NewStep[JSON, JSON](opts, func(obj pipeline.Item[JSON], yield pipeline.Yield[JSON]) bool {
+	return pipeline.NewStep(opts, func(obj pipeline.Item[JSON], yield pipeline.Yield[JSON]) bool {
 		if obj.Metadata.Removed {
 			return yield(obj, nil)
 		}

@@ -30,6 +30,7 @@ type filterParams struct {
 	includeRegexp []string
 	excludeRegexp []string
 	selectProps   []string
+	expandProps   []string
 	durationMs    []string
 	showErrors    bool
 	textFormat    []string
@@ -109,6 +110,12 @@ func createRootCmd() *cobra.Command {
 		"select",
 		nil,
 		"property names to output")
+
+	filterCmd.Flags().StringSliceVar(
+		&params.expandProps,
+		"expand",
+		nil,
+		"property names with string values to parse them as json objects. Can be used then in filters and other operations")
 
 	filterCmd.Flags().BoolVar(
 		&params.showErrors,
@@ -261,6 +268,7 @@ func runPipeline(params *filterParams, filename string, r io.Reader, w io.Writer
 
 	processJSON := pipeline.Combine(
 		addMeta,
+		steps.Expand(opts, params.expandProps),
 		filterByKQL,
 		filterByJq,
 		steps.DistinctBy(opts, params.distinctBy),

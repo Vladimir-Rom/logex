@@ -47,6 +47,16 @@ func TestKQL(t *testing.T) {
 		[]steps.JSON{{"field": "value2"}})
 }
 
+func TestExpand(t *testing.T) {
+	testPipelineJson(t,
+		&filterParams{kqlFilter: "inner.foo:bar", expandProps: []string{"inner"}},
+		[]steps.JSON{
+			{"field": "value1"},
+			{"field": "value2", "inner": `{"foo":"bar"}`},
+			{"field": "value3"}},
+		[]steps.JSON{{"field": "value2", "inner": map[string]any{"foo": "bar"}}})
+}
+
 func TestJq(t *testing.T) {
 	testPipelineJson(t,
 		&filterParams{jq: ".field==\"value2\""},
