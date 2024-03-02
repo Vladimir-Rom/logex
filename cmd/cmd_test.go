@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/vladimir-rom/logex/steps"
 )
@@ -44,6 +45,18 @@ func TestKQL(t *testing.T) {
 		&filterParams{kqlFilter: "field:value2"},
 		[]steps.JSON{{"field": "value1"}, {"field": "value2"}, {"field": "value3"}},
 		[]steps.JSON{{"field": "value2"}})
+}
+
+func TestJq(t *testing.T) {
+	testPipelineJson(t,
+		&filterParams{jq: ".field==\"value2\""},
+		[]steps.JSON{{"field": "value1"}, {"field": "value2"}, {"field": "value3"}},
+		[]steps.JSON{{"field": "value2"}})
+
+	testPipelineJson(t,
+		&filterParams{jq: `. + {"foo":"bar"}`},
+		[]steps.JSON{{"field": "value1"}},
+		[]steps.JSON{{"field": "value1", "foo": "bar"}})
 }
 
 func TestInclude(t *testing.T) {
@@ -128,17 +141,20 @@ func testPipelineJson(t *testing.T, params *filterParams, in []steps.JSON, expec
 	}
 
 	outBuffer := bytes.Buffer{}
-
+	params.showErrors = true
 	err := runPipeline(params, "test", &inBuffer, &outBuffer)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out := make([]steps.JSON, 0, len(in))
+	t.Log(outBuffer.String())
 	decoder := json.NewDecoder(&outBuffer)
 	for {
 		j := make(steps.JSON)
-		if err := decoder.Decode(&j); errors.Is(err, io.EOF) {
+		err := decoder.Decode(&j)
+		if errors.Is(err, io.EOF) {
 			break
 		}
+		require.NoError(t, err)
 		out = append(out, j)
 	}
 

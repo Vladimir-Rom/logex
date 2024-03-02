@@ -24,6 +24,7 @@ func Execute() {
 type filterParams struct {
 	fileName      string
 	kqlFilter     string
+	jq            string
 	include       []string
 	exclude       []string
 	includeRegexp []string
@@ -60,10 +61,16 @@ func createRootCmd() *cobra.Command {
 
 	filterCmd.Flags().StringVarP(
 		&params.kqlFilter,
-		"filter-kql",
+		"kql",
 		"f",
 		"",
 		"filter in the Kibana Query Language format. Example: 'level:(error OR warn)'")
+
+	filterCmd.Flags().StringVar(
+		&params.jq,
+		"jq",
+		"",
+		"jq expression for filtering or transformation. Example: '.level==\"info\" or .level==\"warn\"'")
 
 	filterCmd.Flags().StringSliceVarP(
 		&params.include,
@@ -209,6 +216,11 @@ func runPipeline(params *filterParams, filename string, r io.Reader, w io.Writer
 		return err
 	}
 
+	filterByJq, err := steps.FilterByJq(opts, params.jq)
+	if err != nil {
+		return err
+	}
+
 	addMeta, err := steps.AddMeta(opts, params.metadata)
 	if err != nil {
 		return err
@@ -250,6 +262,7 @@ func runPipeline(params *filterParams, filename string, r io.Reader, w io.Writer
 	processJSON := pipeline.Combine(
 		addMeta,
 		filterByKQL,
+		filterByJq,
 		steps.DistinctBy(opts, params.distinctBy),
 		steps.Select(opts, params.selectProps),
 		steps.Context(opts, params.context, params.context),
