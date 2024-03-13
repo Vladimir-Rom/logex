@@ -11,12 +11,14 @@ Flags:
       --duration-ms strings      treat specified fields as duration string and convert it to milliseconds
   -e, --exclude strings          exclude records with any of specified substrings
       --exclude-regexp strings   exclude records which matched with any of specified regular expressions
-  -f, --filter-kql string        filter in the Kibana Query Language format. Example: 'level:(error OR warn)'
+      --expand strings           property names with string values to parse them as json objects. Can be used then in filters and other operations
       --first int                print only first N matched records
   -h, --help                     help for logex
   -l, --highlight strings        highlight substrings in output
   -i, --include strings          include only records with any of specified substrings
       --include-regexp strings   include only records which matched with any of specified regular expressions
+      --jq string                jq expression for filtering or transformation. Example: '.level=="info" or .level=="warn"'
+  -f, --kql string               filter in the Kibana Query Language format. Example: 'level:(error OR warn)'
       --last int                 print only last N matched records
   -m, --metadata string          add metadata fields. Format: name[:property-name].
                                  Examples:
