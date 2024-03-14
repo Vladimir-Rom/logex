@@ -7,7 +7,12 @@ import (
 	"os"
 	"slices"
 
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/providers/posflag"
+	"github.com/knadh/koanf/v2"
 	"github.com/spf13/cobra"
+	"github.com/vladimir-rom/logex/cmd/config"
 	"github.com/vladimir-rom/logex/pipeline"
 	"github.com/vladimir-rom/logex/steps"
 )
@@ -22,37 +27,64 @@ func Execute() {
 }
 
 type filterParams struct {
-	fileName      string
-	kqlFilter     string
-	jq            string
-	include       []string
-	exclude       []string
-	includeRegexp []string
-	excludeRegexp []string
-	selectProps   []string
-	expandProps   []string
-	durationMs    []string
-	showErrors    bool
-	textFormat    []string
-	textNoNewLine bool
-	textDelim     string
-	textNoProp    bool
-	distinctBy    string
-	highlights    []string
-	first         int
-	last          int
-	context       int
-	metadata      string
+	fileName string
+	config   string
+
+	// filters
+	kqlFilter     func() string
+	jq            func() string
+	include       func() []string
+	exclude       func() []string
+	includeRegexp func() []string
+	excludeRegexp func() []string
+
+	// properties
+	selectProps func() []string
+	hideProps   func() []string
+	expandProps func() []string
+	durationMs  func() []string
+	metadata    func() string
+
+	// text formatting
+	textFormat    func() []string
+	textNoNewLine func() bool
+	textDelim     func() string
+	textNoProp    func() bool
+	highlights    func() []string
+
+	// post processing
+	distinctBy func() string
+	first      func() int
+	last       func() int
+	context    func() int
+
+	// debug
+	showErrors func() bool
 }
 
 func createRootCmd() *cobra.Command {
 	var params filterParams
+	var k = koanf.New(".")
+
 	filterCmd := &cobra.Command{
 		Use:   "logex [flags] file-name",
 		Short: "logex is a tool for filtering and formatting structured log files",
 		Run: func(cmd *cobra.Command, args []string) {
 			params.fileName = args[0]
-			err := doFilter(&params)
+
+			if len(params.config) == 0 {
+				params.config = os.Getenv("LOGEX_CONFIG")
+			}
+			if len(params.config) > 0 {
+				if err := k.Load(file.Provider(params.config), yaml.Parser()); err != nil {
+					log.Fatalf("error loading config file: %v", err)
+				}
+			}
+			if err := k.Load(posflag.Provider(cmd.Flags(), ".", k), nil); err != nil {
+				log.Fatalf("error loading command line config: %v", err)
+			}
+
+			err := doFilter(&params, cmd)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -60,130 +92,129 @@ func createRootCmd() *cobra.Command {
 		Args: cobra.ExactArgs(1),
 	}
 
-	filterCmd.Flags().StringVarP(
-		&params.kqlFilter,
+	defineFlags(
+		config.NewRegistry(k, filterCmd.Flags()),
+		&params)
+
+	filterCmd.Flags().StringVar(
+		&params.config,
+		"config",
+		"",
+		"configuration file name")
+
+	return filterCmd
+}
+
+func defineFlags(reg *config.Registry, params *filterParams) {
+	params.kqlFilter = reg.StringP(
 		"kql",
 		"f",
 		"",
 		"filter in the Kibana Query Language format. Example: 'level:(error OR warn)'")
 
-	filterCmd.Flags().StringVar(
-		&params.jq,
+	params.jq = reg.String(
 		"jq",
 		"",
 		"jq expression for filtering or transformation. Example: '.level==\"info\" or .level==\"warn\"'")
 
-	filterCmd.Flags().StringSliceVarP(
-		&params.include,
+	params.include = reg.StringsP(
 		"include",
 		"i",
 		nil,
 		"include only records with any of specified substrings")
 
-	filterCmd.Flags().StringSliceVarP(
-		&params.exclude,
+	params.exclude = reg.StringsP(
 		"exclude",
 		"e",
 		nil,
 		"exclude records with any of specified substrings")
 
-	filterCmd.Flags().StringSliceVar(
-		&params.includeRegexp,
+	params.includeRegexp = reg.Strings(
 		"include-regexp",
 		nil,
 		"include only records which matched with any of specified regular expressions")
 
-	filterCmd.Flags().StringSliceVar(
-		&params.excludeRegexp,
+	params.excludeRegexp = reg.Strings(
 		"exclude-regexp",
 		nil,
 		"exclude records which matched with any of specified regular expressions")
 
-	filterCmd.Flags().StringSliceVar(
-		&params.durationMs,
+	params.durationMs = reg.Strings(
 		"duration-ms",
 		nil,
 		"treat specified fields as duration string and convert it to milliseconds")
 
-	filterCmd.Flags().StringSliceVar(
-		&params.selectProps,
+	params.selectProps = reg.Strings(
 		"select",
 		nil,
 		"property names to output")
 
-	filterCmd.Flags().StringSliceVar(
-		&params.expandProps,
+	params.hideProps = reg.Strings(
+		"hide-prop",
+		nil,
+		"property names to hide")
+
+	params.expandProps = reg.Strings(
 		"expand",
 		nil,
 		"property names with string values to parse them as json objects. Can be used then in filters and other operations")
 
-	filterCmd.Flags().BoolVar(
-		&params.showErrors,
+	params.showErrors = reg.Bool(
 		"show-errors",
 		false,
 		"show processing errors")
 
-	filterCmd.Flags().StringSliceVarP(
-		&params.textFormat,
+	params.textFormat = reg.StringsP(
 		"txt-format",
 		"t",
 		nil,
 		"property names which will be printed first in the plain text format")
 
-	filterCmd.Flags().BoolVar(
-		&params.textNoNewLine,
+	params.textNoNewLine = reg.Bool(
 		"txt-nonl",
 		false,
 		"do not add new lines after each record")
 
-	filterCmd.Flags().BoolVar(
-		&params.textNoProp,
+	params.textNoProp = reg.Bool(
 		"txt-noprop",
 		false,
 		"do not print properties except these selected in the format string (txt-format)")
 
-	filterCmd.Flags().StringVar(
-		&params.textDelim,
+	params.textDelim = reg.String(
 		"txt-delim",
 		"|",
 		"delimiter between text properties")
 
-	filterCmd.Flags().StringVar(
-		&params.distinctBy,
+	params.distinctBy = reg.String(
 		"distinct-by",
 		"",
 		"returns distinct records according to the specified property name")
 
-	filterCmd.Flags().StringSliceVarP(
-		&params.highlights,
+	params.highlights = reg.StringsP(
 		"highlight",
 		"l",
 		nil,
 		"highlight substrings in output")
 
-	filterCmd.Flags().IntVar(
-		&params.first,
+	params.first = reg.Int(
 		"first",
 		0,
 		"print only first N matched records",
 	)
 
-	filterCmd.Flags().IntVar(
-		&params.last,
+	params.last = reg.Int(
 		"last",
 		0,
 		"print only last N matched records",
 	)
 
-	filterCmd.Flags().IntVar(
-		&params.context,
+	params.context = reg.Int(
 		"context",
 		0,
 		"print N additional records before and after matched",
 	)
 
-	filterCmd.Flags().StringVarP(
-		&params.metadata,
+	params.metadata = reg.StringP(
 		"metadata",
 		"m",
 		"rnum",
@@ -191,15 +222,13 @@ func createRootCmd() *cobra.Command {
 			"'rnum' - adds rnum field with record number\n"+
 			"'rnum:r1 file:f1' - adds field r1 record number and f1 with name of logfile. ",
 	)
-
-	return filterCmd
 }
 
-func doFilter(params *filterParams) error {
+func doFilter(params *filterParams, cmd *cobra.Command) error {
 	var reader io.Reader
 	var fileName string
 	if params.fileName == "-" {
-		reader = os.Stdin
+		reader = cmd.InOrStdin()
 		fileName = "stdin"
 	} else {
 		fileName = params.fileName
@@ -211,24 +240,24 @@ func doFilter(params *filterParams) error {
 		defer close()
 	}
 
-	return runPipeline(params, fileName, reader, os.Stdout)
+	return runPipeline(params, fileName, reader, cmd.OutOrStdout())
 }
 
 func runPipeline(params *filterParams, filename string, r io.Reader, w io.Writer) error {
 	opts := pipeline.PipelineOptions{
-		ContextEnabled: params.context > 0,
+		ContextEnabled: params.context() > 0,
 	}
-	filterByKQL, err := steps.FilterByKQL(opts, params.kqlFilter)
+	filterByKQL, err := steps.FilterByKQL(opts, params.kqlFilter())
 	if err != nil {
 		return err
 	}
 
-	filterByJq, err := steps.FilterByJq(opts, params.jq)
+	filterByJq, err := steps.FilterByJq(opts, params.jq())
 	if err != nil {
 		return err
 	}
 
-	addMeta, err := steps.AddMeta(opts, params.metadata)
+	addMeta, err := steps.AddMeta(opts, params.metadata())
 	if err != nil {
 		return err
 	}
@@ -237,52 +266,53 @@ func runPipeline(params *filterParams, filename string, r io.Reader, w io.Writer
 
 	var formatJSONToText pipeline.Step[steps.JSON, string]
 
-	if len(params.textFormat) > 0 {
+	if len(params.textFormat()) > 0 {
 		formatJSONToText = steps.JsonToText(
 			opts,
-			params.textFormat,
-			params.textNoNewLine,
-			params.textNoProp,
-			params.textDelim,
-			slices.Concat(params.include, params.highlights))
+			params.textFormat(),
+			params.textNoNewLine(),
+			params.textNoProp(),
+			params.textDelim(),
+			slices.Concat(params.include(), params.highlights()))
 	} else {
 		formatJSONToText = steps.JsonToStr(opts)
 	}
 
-	includeRegexp, err := steps.IncludeRegexp(opts, params.includeRegexp)
+	includeRegexp, err := steps.IncludeRegexp(opts, params.includeRegexp())
 	if err != nil {
 		return err
 	}
-	excludeRegexp, err := steps.ExcludeRegexp(opts, params.excludeRegexp)
+	excludeRegexp, err := steps.ExcludeRegexp(opts, params.excludeRegexp())
 	if err != nil {
 		return err
 	}
 
 	processStringInput := pipeline.Combine(
 		steps.RemovePrefix(opts),
-		steps.ExcludeSubstringsAny(opts, params.exclude),
-		steps.IncludeSubstringsAny(opts, params.include),
+		steps.ExcludeSubstringsAny(opts, params.exclude()),
+		steps.IncludeSubstringsAny(opts, params.include()),
 		includeRegexp,
 		excludeRegexp,
 	)
 
 	processJSON := pipeline.Combine(
 		addMeta,
-		steps.Expand(opts, params.expandProps),
+		steps.Expand(opts, params.expandProps()),
 		filterByKQL,
 		filterByJq,
-		steps.DistinctBy(opts, params.distinctBy),
-		steps.Select(opts, params.selectProps),
-		steps.Context(opts, params.context, params.context),
-		steps.First(opts, params.first),
-		steps.Last(opts, params.last),
+		steps.DistinctBy(opts, params.distinctBy()),
+		steps.Hide(opts, params.hideProps()),
+		steps.Select(opts, params.selectProps()),
+		steps.Context(opts, params.context(), params.context()),
+		steps.First(opts, params.first()),
+		steps.Last(opts, params.last()),
 	)
 
 	return steps.WriteLines(
 		w,
-		params.showErrors,
+		params.showErrors(),
 		formatJSONToText(
 			processJSON(
-				steps.StrToJson(opts, params.durationMs)(
+				steps.StrToJson(opts, params.durationMs())(
 					processStringInput(input)))))
 }
