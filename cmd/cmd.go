@@ -71,20 +71,12 @@ func createRootCmd() *cobra.Command {
 		Short: "logex is a tool for filtering and formatting structured log files",
 		Run: func(cmd *cobra.Command, args []string) {
 			params.fileName = args[0]
-
-			if len(params.config) == 0 {
-				params.config = os.Getenv("LOGEX_CONFIG")
-			}
-			if len(params.config) > 0 {
-				if err := k.Load(file.Provider(params.config), yaml.Parser()); err != nil {
-					log.Fatalf("error loading config file: %v", err)
-				}
-			}
-			if err := k.Load(posflag.Provider(cmd.Flags(), ".", k), nil); err != nil {
-				log.Fatalf("error loading command line config: %v", err)
+			err := loadConfiguration(&params, k, cmd)
+			if err != nil {
+				log.Fatal(err)
 			}
 
-			err := doFilter(&params, cmd)
+			err = doFilter(&params, cmd)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -103,6 +95,22 @@ func createRootCmd() *cobra.Command {
 		"configuration file name")
 
 	return filterCmd
+}
+
+func loadConfiguration(params *filterParams, k *koanf.Koanf, cmd *cobra.Command) error {
+	if len(params.config) == 0 {
+		params.config = os.Getenv("LOGEX_CONFIG")
+	}
+	if len(params.config) > 0 {
+		if err := k.Load(file.Provider(params.config), yaml.Parser()); err != nil {
+			return fmt.Errorf("error loading config file: %v", err)
+		}
+	}
+	if err := k.Load(posflag.Provider(cmd.Flags(), ".", k), nil); err != nil {
+		return fmt.Errorf("error loading command line config: %v", err)
+	}
+
+	return nil
 }
 
 func defineFlags(reg *config.Registry, params *filterParams) {
