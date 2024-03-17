@@ -118,39 +118,39 @@ func defineFlags(reg *config.Registry, params *filterParams) {
 		"kql",
 		"f",
 		"",
-		"filter in the Kibana Query Language format. Example: 'level:(error OR warn)'")
+		"Filter in the Kibana Query Language format. Example: 'level:(error OR warn)'")
 
 	params.jq = reg.String(
 		"jq",
 		"",
-		"jq expression for filtering or transformation. Example: '.level==\"info\" or .level==\"warn\"'")
+		"specify a jq expression for filtering or transformation. Example: '.level==\"info\" or .level==\"warn\"'")
 
 	params.include = reg.StringsP(
 		"include",
 		"i",
 		nil,
-		"include only records with any of specified substrings")
+		"include only records containing any of the specified substrings")
 
 	params.exclude = reg.StringsP(
 		"exclude",
 		"e",
 		nil,
-		"exclude records with any of specified substrings")
+		"exclude records containing any of the specified substrings")
 
 	params.includeRegexp = reg.Strings(
 		"include-regexp",
 		nil,
-		"include only records which matched with any of specified regular expressions")
+		"include only records that match any of the specified regular expressions")
 
 	params.excludeRegexp = reg.Strings(
 		"exclude-regexp",
 		nil,
-		"exclude records which matched with any of specified regular expressions")
+		"exclude records that match any of the specified regular expressions")
 
 	params.durationMs = reg.Strings(
 		"duration-ms",
 		nil,
-		"treat specified fields as duration string and convert it to milliseconds")
+		"treat specified fields as duration strings and convert them to milliseconds (useful for filtering)")
 
 	params.selectProps = reg.Strings(
 		"select",
@@ -158,14 +158,14 @@ func defineFlags(reg *config.Registry, params *filterParams) {
 		"property names to output")
 
 	params.hideProps = reg.Strings(
-		"hide-prop",
+		"hide",
 		nil,
 		"property names to hide")
 
 	params.expandProps = reg.Strings(
 		"expand",
 		nil,
-		"property names with string values to parse them as json objects. Can be used then in filters and other operations")
+		"parse property names with string values as JSON objects for use in filters and other operations")
 
 	params.showErrors = reg.Bool(
 		"show-errors",
@@ -176,7 +176,7 @@ func defineFlags(reg *config.Registry, params *filterParams) {
 		"txt-format",
 		"t",
 		nil,
-		"property names which will be printed first in the plain text format")
+		"property names to be printed first in plain text format")
 
 	params.textNoNewLine = reg.Bool(
 		"txt-nonl",
@@ -186,7 +186,7 @@ func defineFlags(reg *config.Registry, params *filterParams) {
 	params.textNoProp = reg.Bool(
 		"txt-noprop",
 		false,
-		"do not print properties except these selected in the format string (txt-format)")
+		"do not print properties except those selected in the format string (txt-format)")
 
 	params.textDelim = reg.String(
 		"txt-delim",
@@ -196,30 +196,30 @@ func defineFlags(reg *config.Registry, params *filterParams) {
 	params.distinctBy = reg.String(
 		"distinct-by",
 		"",
-		"returns distinct records according to the specified property name")
+		"return distinct records based on the specified property names")
 
 	params.highlights = reg.StringsP(
 		"highlight",
 		"l",
 		nil,
-		"highlight substrings in output")
+		"highlight substrings in the output")
 
 	params.first = reg.Int(
 		"first",
 		0,
-		"print only first N matched records",
+		"print only the first N matched records",
 	)
 
 	params.last = reg.Int(
 		"last",
 		0,
-		"print only last N matched records",
+		"print only the last N matched records",
 	)
 
 	params.context = reg.Int(
 		"context",
 		0,
-		"print N additional records before and after matched",
+		"print N additional records before and after matches",
 	)
 
 	params.metadata = reg.StringP(
@@ -227,8 +227,8 @@ func defineFlags(reg *config.Registry, params *filterParams) {
 		"m",
 		"rnum",
 		"add metadata fields. Format: name[:property-name]. \nExamples:\n"+
-			"'rnum' - adds rnum field with record number\n"+
-			"'rnum:r1 file:f1' - adds field r1 record number and f1 with name of logfile. ",
+			"'rnum' - adds an rnum field with the record number\n"+
+			"'rnum:r1 file:f1' - adds field r1 with the record number and f1 with the name of the logfile",
 	)
 }
 
