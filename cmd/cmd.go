@@ -46,6 +46,7 @@ type filterParams struct {
 	metadata    func() string
 
 	// text formatting
+	outputFormat  func() string
 	textFormat    func() []string
 	textNoNewLine func() bool
 	textDelim     func() string
@@ -178,6 +179,11 @@ func defineFlags(reg *config.Registry, params *filterParams) {
 		nil,
 		"property names to be printed first in plain text format")
 
+	params.outputFormat = reg.String(
+		"format",
+		"text",
+		"output format, can be \"text\" or \"json\"")
+
 	params.textNoNewLine = reg.Bool(
 		"txt-nonl",
 		false,
@@ -232,7 +238,22 @@ func defineFlags(reg *config.Registry, params *filterParams) {
 	)
 }
 
+func (p *filterParams) Validate() error {
+	switch f := p.outputFormat(); f {
+	case "text":
+	case "json":
+		break
+	default:
+		return fmt.Errorf("Unknown output format: %s", f)
+	}
+	return nil
+}
+
 func doFilter(params *filterParams, cmd *cobra.Command) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
+
 	var reader io.Reader
 	var fileName string
 	if params.fileName == "-" {
@@ -274,7 +295,7 @@ func runPipeline(params *filterParams, filename string, r io.Reader, w io.Writer
 
 	var formatJSONToText pipeline.Step[steps.JSON, string]
 
-	if len(params.textFormat()) > 0 {
+	if len(params.textFormat()) > 0 || params.outputFormat() == "text" {
 		formatJSONToText = steps.JsonToText(
 			opts,
 			params.textFormat(),

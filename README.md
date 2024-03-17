@@ -26,6 +26,7 @@ Flags:
       --exclude-regexp strings   exclude records that match any of the specified regular expressions
       --expand strings           parse property names with string values as JSON objects for use in filters and other operations
       --first int                print only the first N matched records
+      --format string            output format, can be "text" or "json" (default "text")
   -h, --help                     help for logex
       --hide strings             property names to hide
   -l, --highlight strings        highlight substrings in the output
