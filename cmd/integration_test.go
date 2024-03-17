@@ -50,7 +50,7 @@ func TestKQL(t *testing.T) {
 
 func TestHide(t *testing.T) {
 	testCmd(t,
-		[]string{"--hide-prop", "field2"},
+		[]string{"--hide", "field2"},
 		[]steps.JSON{{"field1": "value1", "field2": "value2"}},
 		[]steps.JSON{{"field1": "value1"}})
 }
@@ -162,7 +162,7 @@ func TestMetadata(t *testing.T) {
 func testCmd(t *testing.T, args []string, in []steps.JSON, expectedOut []steps.JSON) {
 	t.Helper()
 	cmd := createRootCmd()
-	args = append(args, "--show-errors", "-")
+	args = append(args, "--show-errors", "-", "--format", "json")
 	if !slices.Contains(args, "--metadata") && !slices.Contains(args, "-m") {
 		args = append(args, "--metadata", "")
 	}
