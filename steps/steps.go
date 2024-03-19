@@ -200,13 +200,17 @@ func OpenFile(fileName string) (close func() error, reader io.Reader, err error)
 }
 
 func ReadByLines(fileName string, r io.Reader) pipeline.Seq[string] {
-	scanner := bufio.NewScanner(r)
-	scanner.Split(bufio.ScanLines)
+	reader := bufio.NewReader(r)
 	recNum := 0
 	return func(yield pipeline.Yield[string]) {
-		for scanner.Scan() {
+		for {
+			line, err := reader.ReadString('\n')
+			if len(line) == 0 && err == io.EOF {
+				break
+			}
+
 			item := pipeline.Item[string]{
-				Value: scanner.Text(),
+				Value: line,
 				Metadata: pipeline.Metadata{
 					RecNum:   recNum,
 					FileName: fileName,
@@ -214,8 +218,13 @@ func ReadByLines(fileName string, r io.Reader) pipeline.Seq[string] {
 			}
 			recNum++
 
-			if !yield(item, scanner.Err()) {
-				return
+			if err == io.EOF {
+				yield(item, nil)
+			} else if !yield(item, err) {
+				break
+			}
+			if err != nil {
+				break
 			}
 		}
 	}

@@ -14,7 +14,7 @@
                 "GOEXPERIMENT": "rangefunc",
                 "LOGEX_INCLUDE": "api"
             },
-            "args": ["--first", "3", "c:\\0\\logs\\pm.log"]
+            "args": ["logname.log"]
         }
     ]
 }
