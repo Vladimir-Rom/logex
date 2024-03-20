@@ -12,13 +12,17 @@ import (
 
 func JsonToText(
 	opts pipeline.PipelineOptions,
-	props []string,
+	headProps []string,
+	orderProps []string,
 	noNewLine,
 	noProp bool,
 	textDelim string,
 	highlights []string) pipeline.Step[JSON, string] {
 	propsMap := make(map[string]struct{})
-	for _, p := range props {
+	for _, p := range headProps {
+		propsMap[p] = struct{}{}
+	}
+	for _, p := range orderProps {
 		propsMap[p] = struct{}{}
 	}
 
@@ -27,9 +31,9 @@ func JsonToText(
 
 	return pipeline.NewStep[JSON, string](opts, func(obj pipeline.Item[JSON], yield pipeline.Yield[string]) bool {
 		res := strings.Builder{}
-		for i, p := range props {
+		for i, p := range headProps {
 			delim := textDelim
-			if i == len(props)-1 {
+			if i == len(headProps)-1 {
 				delim = ""
 			}
 
@@ -38,13 +42,19 @@ func JsonToText(
 				res.Write([]byte(c.ForProperty(p)(vstr) + delim))
 			}
 		}
+		for _, p := range orderProps {
+			if v, ok := obj.Value[p]; ok {
+				vstr := fmt.Sprint(v)
+				res.Write([]byte(fmt.Sprintf(" %s:%v", c.PropertyName(p), c.ForProperty(p)(vstr))))
+			}
+		}
 		if !noProp {
 			for k, v := range obj.Value.SortedByKey {
 				if _, ok := propsMap[k]; ok {
 					continue
 				}
 				vstr := fmt.Sprint(v)
-				res.Write([]byte(fmt.Sprintf(" %s:%v", c.Property(k), c.ForProperty(k)(vstr))))
+				res.Write([]byte(fmt.Sprintf(" %s:%v", c.PropertyName(k), c.ForProperty(k)(vstr))))
 			}
 		}
 

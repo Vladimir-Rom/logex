@@ -47,7 +47,8 @@ type filterParams struct {
 
 	// text formatting
 	outputFormat  func() string
-	textFormat    func() []string
+	headProps     func() []string
+	orderProps    func() []string
 	textNoNewLine func() bool
 	textDelim     func() string
 	textNoProp    func() bool
@@ -124,115 +125,122 @@ func defineFlags(reg *config.Registry, params *filterParams) {
 	params.jq = reg.String(
 		"jq",
 		"",
-		"specify a jq expression for filtering or transformation. Example: '.level==\"info\" or .level==\"warn\"'")
+		"Specify a jq expression for filtering or transformation. Example: '.level==\"info\" or .level==\"warn\"'")
 
 	params.include = reg.StringsP(
 		"include",
 		"i",
 		nil,
-		"include only records containing any of the specified substrings")
+		"Include only records containing any of the specified substrings")
 
 	params.exclude = reg.StringsP(
 		"exclude",
 		"e",
 		nil,
-		"exclude records containing any of the specified substrings")
+		"Exclude records containing any of the specified substrings")
 
 	params.includeRegexp = reg.Strings(
 		"include-regexp",
 		nil,
-		"include only records that match any of the specified regular expressions")
+		"Include only records that match any of the specified regular expressions")
 
 	params.excludeRegexp = reg.Strings(
 		"exclude-regexp",
 		nil,
-		"exclude records that match any of the specified regular expressions")
+		"Exclude records that match any of the specified regular expressions")
 
 	params.durationMs = reg.Strings(
 		"duration-ms",
 		nil,
-		"treat specified fields as duration strings and convert them to milliseconds (useful for filtering)")
+		"Treat specified fields as duration strings and convert them to milliseconds (useful for filtering)")
 
 	params.selectProps = reg.Strings(
 		"select",
 		nil,
-		"property names to output")
+		"Property names to output, other properties will be skipped")
 
 	params.hideProps = reg.Strings(
 		"hide",
 		nil,
-		"property names to hide")
+		"Property names to hide")
 
 	params.expandProps = reg.Strings(
 		"expand",
 		nil,
-		"parse property names with string values as JSON objects for use in filters and other operations")
+		"Parse property names with string values as JSON objects for use in filters and other operations")
 
 	params.showErrors = reg.Bool(
 		"show-errors",
 		false,
-		"show processing errors")
+		"Show processing errors")
 
-	params.textFormat = reg.StringsP(
-		"txt-format",
+	params.headProps = reg.StringsP(
+		"txt-head",
 		"t",
 		nil,
-		"property names to be printed first in plain text format")
+		"Specify property names whose values will be displayed at the beginning of the record without\n"+
+			"printing property names. Other properties will follow. Applicable for text format.")
 
-	params.outputFormat = reg.String(
-		"format",
-		"text",
-		"output format, can be \"text\" or \"json\"")
+	params.orderProps = reg.Strings(
+		"order",
+		nil,
+		"Specify property names to be displayed at the beginning of the record. Other properties will follow. "+
+			"\nApplicable for text format.")
 
 	params.textNoNewLine = reg.Bool(
 		"txt-nonl",
 		false,
-		"do not add new lines after each record")
+		"Do not add new lines after each record.\nApplicable for text format.")
 
 	params.textNoProp = reg.Bool(
 		"txt-noprop",
 		false,
-		"do not print properties except those selected in the format string (txt-format)")
+		"Exclude printing properties except those explicitly selected in --txt-head or --order.\nApplicable for text format.")
 
 	params.textDelim = reg.String(
 		"txt-delim",
 		"|",
-		"delimiter between text properties")
+		"Delimiter between text properties")
+
+	params.outputFormat = reg.String(
+		"format",
+		"text",
+		"Output format, can be \"text\" or \"json\"")
 
 	params.distinctBy = reg.String(
 		"distinct-by",
 		"",
-		"return distinct records based on the specified property names")
+		"Return distinct records based on the specified property names")
 
 	params.highlights = reg.StringsP(
 		"highlight",
 		"l",
 		nil,
-		"highlight substrings in the output")
+		"Highlight substrings in the output")
 
 	params.first = reg.Int(
 		"first",
 		0,
-		"print only the first N matched records",
+		"Print only the first N matched records",
 	)
 
 	params.last = reg.Int(
 		"last",
 		0,
-		"print only the last N matched records",
+		"Print only the last N matched records",
 	)
 
 	params.context = reg.Int(
 		"context",
 		0,
-		"print N additional records before and after matches",
+		"Print N additional records before and after matches",
 	)
 
 	params.metadata = reg.StringP(
 		"metadata",
 		"m",
 		"rnum",
-		"add metadata fields. Format: name[:property-name]. \nExamples:\n"+
+		"Add metadata fields. Format: name[:property-name]. \nExamples:\n"+
 			"'rnum' - adds an rnum field with the record number\n"+
 			"'rnum:r1 file:f1' - adds field r1 with the record number and f1 with the name of the logfile",
 	)
@@ -295,10 +303,11 @@ func runPipeline(params *filterParams, filename string, r io.Reader, w io.Writer
 
 	var formatJSONToText pipeline.Step[steps.JSON, string]
 
-	if len(params.textFormat()) > 0 || params.outputFormat() == "text" {
+	if len(params.headProps()) > 0 || params.outputFormat() == "text" {
 		formatJSONToText = steps.JsonToText(
 			opts,
-			params.textFormat(),
+			params.headProps(),
+			params.orderProps(),
 			params.textNoNewLine(),
 			params.textNoProp(),
 			params.textDelim(),

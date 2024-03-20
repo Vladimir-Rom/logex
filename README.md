@@ -19,30 +19,35 @@ Usage:
 
 Flags:
       --config string            configuration file name
-      --context int              print N additional records before and after matches
-      --distinct-by string       return distinct records based on the specified property names
-      --duration-ms strings      treat specified fields as duration strings and convert them to milliseconds (useful for filtering)
-  -e, --exclude strings          exclude records containing any of the specified substrings
-      --exclude-regexp strings   exclude records that match any of the specified regular expressions
-      --expand strings           parse property names with string values as JSON objects for use in filters and other operations
-      --first int                print only the first N matched records
-      --format string            output format, can be "text" or "json" (default "text")
+      --context int              Print N additional records before and after matches
+      --distinct-by string       Return distinct records based on the specified property names
+      --duration-ms strings      Treat specified fields as duration strings and convert them to milliseconds (useful for filtering)
+  -e, --exclude strings          Exclude records containing any of the specified substrings
+      --exclude-regexp strings   Exclude records that match any of the specified regular expressions
+      --expand strings           Parse property names with string values as JSON objects for use in filters and other operations
+      --first int                Print only the first N matched records
+      --format string            Output format, can be "text" or "json" (default "text")
   -h, --help                     help for logex
-      --hide strings             property names to hide
-  -l, --highlight strings        highlight substrings in the output
-  -i, --include strings          include only records containing any of the specified substrings
-      --include-regexp strings   include only records that match any of the specified regular expressions
-      --jq string                specify a jq expression for filtering or transformation. Example: '.level=="info" or .level=="warn"'
+      --hide strings             Property names to hide
+  -l, --highlight strings        Highlight substrings in the output
+  -i, --include strings          Include only records containing any of the specified substrings
+      --include-regexp strings   Include only records that match any of the specified regular expressions
+      --jq string                Specify a jq expression for filtering or transformation. Example: '.level=="info" or .level=="warn"'
   -f, --kql string               Filter in the Kibana Query Language format. Example: 'level:(error OR warn)'
-      --last int                 print only the last N matched records
-  -m, --metadata string          add metadata fields. Format: name[:property-name].
+      --last int                 Print only the last N matched records
+  -m, --metadata string          Add metadata fields. Format: name[:property-name].
                                  Examples:
                                  'rnum' - adds an rnum field with the record number
                                  'rnum:r1 file:f1' - adds field r1 with the record number and f1 with the name of the logfile (default "rnum")
-      --select strings           property names to output
-      --show-errors              show processing errors
-      --txt-delim string         delimiter between text properties (default "|")
-  -t, --txt-format strings       property names to be printed first in plain text format
-      --txt-nonl                 do not add new lines after each record
-      --txt-noprop               do not print properties except those selected in the format string (txt-format)
+      --order strings            Specify property names to be displayed at the beginning of the record. Other properties will follow.
+                                 Applicable for text format.
+      --select strings           Property names to output, other properties will be skipped
+      --show-errors              Show processing errors
+      --txt-delim string         Delimiter between text properties (default "|")
+  -t, --txt-head strings         Specify property names whose values will be displayed at the beginning of the record without
+                                 printing property names. Other properties will follow. Applicable for text format.
+      --txt-nonl                 Do not add new lines after each record.
+                                 Applicable for text format.
+      --txt-noprop               Exclude printing properties except those explicitly selected in --txt-head or --order.
+                                 Applicable for text format.
 ```

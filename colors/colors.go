@@ -9,15 +9,15 @@ import (
 type Colorize func(s string) string
 
 type Colors struct {
-	Enabled   bool
-	Err       Colorize
-	Warn      Colorize
-	Info      Colorize
-	Debug     Colorize
-	Property  Colorize
-	Highlight Colorize
-	Timestamp Colorize
-	def       Colorize
+	Enabled      bool
+	Err          Colorize
+	Warn         Colorize
+	Info         Colorize
+	Debug        Colorize
+	PropertyName Colorize
+	Highlight    Colorize
+	Timestamp    Colorize
+	def          Colorize
 }
 
 func NewColors() *Colors {
@@ -29,15 +29,15 @@ func NewColors() *Colors {
 	gray := toColorize(color.New(90).SprintFunc())
 
 	return &Colors{
-		Enabled:   !color.NoColor,
-		Err:       toColorize(color.New(color.FgRed).SprintFunc()),
-		Warn:      toColorize(color.New(color.FgYellow).SprintFunc()),
-		Info:      toColorize(color.New(color.FgBlue).SprintFunc()),
-		Debug:     gray,
-		Property:  gray,
-		Highlight: toColorize(color.New(color.FgCyan).SprintFunc()),
-		Timestamp: gray,
-		def:       toColorize(fmt.Sprint),
+		Enabled:      !color.NoColor,
+		Err:          toColorize(color.New(color.FgRed).SprintFunc()),
+		Warn:         toColorize(color.New(color.FgYellow).SprintFunc()),
+		Info:         toColorize(color.New(color.FgBlue).SprintFunc()),
+		Debug:        gray,
+		PropertyName: gray,
+		Highlight:    toColorize(color.New(color.FgCyan).SprintFunc()),
+		Timestamp:    gray,
+		def:          toColorize(fmt.Sprint),
 	}
 }
 
