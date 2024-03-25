@@ -2,13 +2,14 @@
 
 Logex is a tool designed to enhance the readability of log files by filtering and formatting structured data.
 
-Structured logs consist of JSON records primarily intended for processing by systems like Elasticsearch and Kibana (ELK). However, there are instances where human intervention is necessary, such as when dealing with JSON logs from Docker containers or multiple log files associated with an issue in a bug tracker. In such cases, manually parsing through these logs can be challenging. Logex serves as a solution to restore the readability of logs to a more human-friendly format reminiscent of pre-ELK era practices.
+Structured logs consist of JSON records primarily intended for automatic processing by systems like Elasticsearch and Kibana (ELK). However, there are instances where human has to read such files, for example when dealing with JSON logs from Docker containers or log files associated with an issue in a bug tracker. In such cases, manually parsing through these logs can be challenging. Logex serves as a solution to restore the readability of logs to a more human-friendly format like it was in the pre-ELK era. Make logs readable again!
 
 ### Main Features of Logex
 1. **JSON Formatting:** Converts JSON data into plain text for easier comprehension.
 2. **Filtering Options:** Supports filtering JSON records using the Kibana Query Language, JQ queries, plain text filters, or regular expressions.
 3. **Output Colorization:** Enhances log visualization through color highlighting for better distinction.
-4. etc.
+4. **Multiple log files merging:** Merge multiple log files into single stream of records by specified fields (usually by timestamp)
+5. and more
 
 ## Command line help
 ```
@@ -35,6 +36,7 @@ Flags:
       --jq string                Specify a jq expression for filtering or transformation. Example: '.level=="info" or .level=="warn"'
   -f, --kql string               Filter in the Kibana Query Language format. Example: 'level:(error OR warn)'
       --last int                 Print only the last N matched records
+      --merge strings            Merge multiple files into single stream of records by specified fields (usually by timestamp) (default [ts])
   -m, --metadata string          Add metadata fields. Format: name[:property-name].
                                  Examples:
                                  'rnum' - adds an rnum field with the record number

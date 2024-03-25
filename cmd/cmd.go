@@ -11,6 +11,7 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/providers/posflag"
 	"github.com/knadh/koanf/v2"
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"github.com/vladimir-rom/logex/cmd/config"
 	"github.com/vladimir-rom/logex/pipeline"
@@ -27,8 +28,8 @@ func Execute() {
 }
 
 type filterParams struct {
-	fileName string
-	config   string
+	fileNames []string
+	config    string
 
 	// filters
 	kqlFilter     func() string
@@ -56,12 +57,20 @@ type filterParams struct {
 
 	// post processing
 	distinctBy func() string
+	mergeBy    func() []string
 	first      func() int
 	last       func() int
 	context    func() int
 
 	// debug
 	showErrors func() bool
+}
+
+type fileDescr struct {
+	fileName string
+	r        io.Reader
+	close    func() error
+	err      error
 }
 
 func createRootCmd() *cobra.Command {
@@ -72,7 +81,7 @@ func createRootCmd() *cobra.Command {
 		Use:   "logex [flags] file-name",
 		Short: "logex is a tool for filtering and formatting structured log files",
 		Run: func(cmd *cobra.Command, args []string) {
-			params.fileName = args[0]
+			params.fileNames = args
 			err := loadConfiguration(&params, k, cmd)
 			if err != nil {
 				log.Fatal(err)
@@ -83,7 +92,7 @@ func createRootCmd() *cobra.Command {
 				log.Fatal(err)
 			}
 		},
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MinimumNArgs(1),
 	}
 
 	defineFlags(
@@ -212,6 +221,11 @@ func defineFlags(reg *config.Registry, params *filterParams) {
 		"",
 		"Return distinct records based on the specified property names")
 
+	params.mergeBy = reg.Strings(
+		"merge",
+		[]string{"ts"},
+		"Merge multiple files into single stream of records by specified fields (usually by timestamp)")
+
 	params.highlights = reg.StringsP(
 		"highlight",
 		"l",
@@ -262,25 +276,43 @@ func doFilter(params *filterParams, cmd *cobra.Command) error {
 		return err
 	}
 
-	var reader io.Reader
-	var fileName string
-	if params.fileName == "-" {
-		reader = cmd.InOrStdin()
-		fileName = "stdin"
-	} else {
-		fileName = params.fileName
-		close, r, err := steps.OpenFile(params.fileName)
-		if err != nil {
-			return err
+	input := lo.Map(params.fileNames, func(fileName string, _ int) fileDescr {
+		var reader io.Reader
+		var close func() error
+		var err error
+		if fileName == "-" {
+			reader = cmd.InOrStdin()
+			fileName = "stdin"
+			close = func() error { return nil }
+		} else {
+			close, reader, err = steps.OpenFile(fileName)
+			if err != nil {
+				return fileDescr{err: err}
+			}
 		}
-		reader = r
-		defer close()
+
+		return fileDescr{
+			fileName: fileName,
+			r:        reader,
+			close:    close}
+	})
+
+	for _, fd := range input {
+		if fd.err != nil {
+			return fd.err
+		}
 	}
 
-	return runPipeline(params, fileName, reader, cmd.OutOrStdout())
+	defer func() {
+		for _, fd := range input {
+			fd.close()
+		}
+	}()
+
+	return runPipeline(params, input, cmd.OutOrStdout())
 }
 
-func runPipeline(params *filterParams, filename string, r io.Reader, w io.Writer) error {
+func runPipeline(params *filterParams, input []fileDescr, w io.Writer) error {
 	opts := pipeline.PipelineOptions{
 		ContextEnabled: params.context() > 0,
 	}
@@ -298,8 +330,6 @@ func runPipeline(params *filterParams, filename string, r io.Reader, w io.Writer
 	if err != nil {
 		return err
 	}
-
-	input := steps.ReadByLines(filename, r)
 
 	var formatJSONToText pipeline.Step[steps.JSON, string]
 
@@ -338,19 +368,28 @@ func runPipeline(params *filterParams, filename string, r io.Reader, w io.Writer
 		steps.Expand(opts, params.expandProps()),
 		filterByKQL,
 		filterByJq,
-		steps.DistinctBy(opts, params.distinctBy()),
 		steps.Hide(opts, params.hideProps()),
 		steps.Select(opts, params.selectProps()),
 		steps.Context(opts, params.context(), params.context()),
+	)
+
+	postProcessJSON := pipeline.Combine(
+		steps.DistinctBy(opts, params.distinctBy()),
 		steps.First(opts, params.first()),
 		steps.Last(opts, params.last()),
 	)
+
+	multiJsons := lo.Map(input, func(f fileDescr, _ int) pipeline.Seq[steps.JSON] {
+		return processJSON(
+			steps.StrToJson(opts, params.durationMs())(
+				processStringInput(steps.ReadByLines(f.fileName, f.r))))
+	})
+
+	mergedJsons := steps.Merge(opts, params.mergeBy(), multiJsons)
 
 	return steps.WriteLines(
 		w,
 		params.showErrors(),
 		formatJSONToText(
-			processJSON(
-				steps.StrToJson(opts, params.durationMs())(
-					processStringInput(input)))))
+			postProcessJSON(mergedJsons)))
 }
