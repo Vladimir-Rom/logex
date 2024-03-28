@@ -53,3 +53,10 @@ Flags:
       --txt-noprop               Exclude printing properties except those explicitly selected in --txt-head or --order.
                                  Applicable for text format.
 ```
+
+### Configuration
+
+Configuration example:
+```yaml
+
+```

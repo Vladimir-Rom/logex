@@ -64,6 +64,8 @@ type filterParams struct {
 
 	// debug
 	showErrors func() bool
+
+	propertiesConfig config.Properties
 }
 
 type fileDescr struct {
@@ -120,6 +122,8 @@ func loadConfiguration(params *filterParams, k *koanf.Koanf, cmd *cobra.Command)
 	if err := k.Load(posflag.Provider(cmd.Flags(), ".", k), nil); err != nil {
 		return fmt.Errorf("error loading command line config: %v", err)
 	}
+
+	k.Unmarshal("properties", &params.propertiesConfig)
 
 	return nil
 }
@@ -334,14 +338,18 @@ func runPipeline(params *filterParams, input []fileDescr, w io.Writer) error {
 	var formatJSONToText pipeline.Step[steps.JSON, string]
 
 	if len(params.headProps()) > 0 || params.outputFormat() == "text" {
-		formatJSONToText = steps.JsonToText(
+		formatJSONToText, err = steps.JsonToText(
 			opts,
 			params.headProps(),
 			params.orderProps(),
 			params.textNoNewLine(),
 			params.textNoProp(),
 			params.textDelim(),
-			slices.Concat(params.include(), params.highlights()))
+			slices.Concat(params.include(), params.highlights()),
+			params.propertiesConfig)
+		if err != nil {
+			return err
+		}
 	} else {
 		formatJSONToText = steps.JsonToStr(opts)
 	}

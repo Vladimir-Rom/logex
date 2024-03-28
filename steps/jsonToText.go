@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+	"github.com/vladimir-rom/logex/cmd/config"
 	"github.com/vladimir-rom/logex/colors"
 	"github.com/vladimir-rom/logex/pipeline"
 )
@@ -17,7 +18,8 @@ func JsonToText(
 	noNewLine,
 	noProp bool,
 	textDelim string,
-	highlights []string) pipeline.Step[JSON, string] {
+	highlights []string,
+	propertiesConfig config.Properties) (pipeline.Step[JSON, string], error) {
 	propsMap := make(map[string]struct{})
 	for _, p := range headProps {
 		propsMap[p] = struct{}{}
@@ -26,7 +28,10 @@ func JsonToText(
 		propsMap[p] = struct{}{}
 	}
 
-	c := colors.NewColors()
+	c, err := colors.NewColorizer(propertiesConfig, colors.DefaultColorBuilder)
+	if err != nil {
+		return nil, err
+	}
 	highlighter := getHighlighter(highlights, c)
 
 	return pipeline.NewStep[JSON, string](opts, func(obj pipeline.Item[JSON], yield pipeline.Yield[string]) bool {
@@ -69,10 +74,10 @@ func JsonToText(
 		}
 
 		return yield(pipeline.ToItem[JSON, string](obj, highlighter(outStr)), nil)
-	})
+	}), nil
 }
 
-func getHighlighter(subs []string, c *colors.Colors) func(string) string {
+func getHighlighter(subs []string, c *colors.Colorizer) func(string) string {
 	if !c.Enabled || len(subs) == 0 {
 		return func(s string) string {
 			return s
