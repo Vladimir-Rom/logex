@@ -10,11 +10,11 @@ import (
 
 type Colorizer struct {
 	defaultColors
-	Enabled      bool
-	def          StrColorizer
-	cfg          config.Properties
-	colorBuilder ColorBuilder
-	colorizers   map[string]StrColorizer
+	Enabled        bool
+	def            StrColorizer
+	cfg            config.Properties
+	colorBuilder   ColorBuilder
+	propColorizers map[string]StrColorizer
 }
 
 type ColorBuilder func(value ...color.Attribute) StrColorizer
@@ -52,7 +52,7 @@ func NewColorizer(cfg config.Properties, colorBuilder ColorBuilder) (*Colorizer,
 		def:           func(s string) string { return s },
 		cfg:           cfg,
 	}
-	err := res.initializeColorizers()
+	err := res.initPropertyColorizers()
 	if err != nil {
 		return nil, err
 	}
@@ -71,19 +71,19 @@ func toStrColorizer(cf func(a ...any) string) StrColorizer {
 }
 
 func (c *Colorizer) ForProperty(property string) StrColorizer {
-	if strCol, ok := c.colorizers[property]; ok {
+	if strCol, ok := c.propColorizers[property]; ok {
 		return strCol
 	}
 	return c.def
 }
 
-func (c *Colorizer) initializeColorizers() error {
-	c.colorizers = make(map[string]StrColorizer)
+func (c *Colorizer) initPropertyColorizers() error {
+	c.propColorizers = make(map[string]StrColorizer)
 	for prop, conf := range c.cfg {
-		if conf.Colors == nil {
-			c.colorizers[prop] = c.defaultColorizer(prop)
+		if len(conf.Colors) == 0 {
+			c.propColorizers[prop] = c.defaultColorizer(prop)
 		} else {
-			propColorizer, err := c.properyColorizer(*conf.Colors)
+			propColorizer, err := c.properyColorizer(conf.Colors)
 			if err != nil {
 				return nil
 			}
@@ -91,7 +91,7 @@ func (c *Colorizer) initializeColorizers() error {
 				continue
 			}
 
-			c.colorizers[prop] = func(propValue string) string {
+			c.propColorizers[prop] = func(propValue string) string {
 				strCol := propColorizer(propValue)
 				if strCol == nil {
 					return propValue
@@ -164,9 +164,7 @@ func (c *Colorizer) properyColorizer(colConfigs config.Colors) (func(val string)
 				}
 				return nil
 			})
-		}
-
-		if len(colConfig.Pattern) > 0 {
+		} else if len(colConfig.Pattern) > 0 {
 			r, err := regexp.Compile(colConfig.Pattern)
 			if err != nil {
 				return nil, err
@@ -177,6 +175,9 @@ func (c *Colorizer) properyColorizer(colConfigs config.Colors) (func(val string)
 				}
 				return nil
 			})
+		} else {
+			res = append(res, func(val string) StrColorizer { return col })
+			break
 		}
 	}
 

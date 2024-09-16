@@ -3,7 +3,7 @@ package config
 type (
 	Properties map[string]Property
 	Property   struct {
-		*Colors
+		Colors
 	}
 	Colors []Color
 	Color  struct {
